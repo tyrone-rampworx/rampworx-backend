@@ -1,46 +1,81 @@
 // services/userService.js
 const User = require('../models/User');
 const Address = require('../models/Address');
+const logger = require('../utils/logger');
 
 const getAllUsers = async () => {
-  return await User.findAll({
-    include: [Address],
-  });
+  try {
+    const users = await User.findAll({
+      include: [Address],
+      attributes: { exclude: ['password'] },
+    });
+    return users;
+  } catch (error) {
+    logger.error('Error fetching all users:', error);
+    throw error;
+  }
 };
 
 const createUser = async (username, email, password, membership_id) => {
-  if (!username || !email || !password || !membership_id) {
-    throw new Error('Missing required fields');
-  }
+  try {
+    if (!username || !email || !password || !membership_id) {
+      throw new Error('Missing required fields');
+    }
 
-  return await User.create({
-    username,
-    email,
-    password,
-    membership_id,
-  });
+    return await User.create({
+      username,
+      email,
+      password,
+      membership_id,
+    });
+  } catch (error) {
+    logger.error('Error creating user:', error);
+    throw error;
+  }
 };
 
 const getUserById = async (id) => {
-  return await User.findByPk(id, {
-    include: [Address],
-  });
+  try {
+    const user = await User.findByPk(id, {
+      include: [Address],
+      attributes: { exclude: ['password'] },
+    });
+    return user;
+  } catch (error) {
+    logger.error(`Error fetching user with id ${id}:`, error);
+    throw error;
+  }
 };
 
 const updateUser = async (id, userData) => {
-  const user = await User.findByPk(id);
-  if (!user) {
-    throw new Error('User not found');
+  try {
+    const user = await User.findByPk(id);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    // Don't allow password updates through this endpoint
+    const updateData = { ...userData };
+    delete updateData.password;
+    const updatedUser = await user.update(updateData);
+    return updatedUser.toJSON({ exclude: ['password'] });
+  } catch (error) {
+    logger.error(`Error updating user with id ${id}:`, error);
+    throw error;
   }
-  return await user.update(userData);
 };
 
 const deleteUser = async (id) => {
-  const user = await User.findByPk(id);
-  if (!user) {
-    throw new Error('User not found');
+  try {
+    const user = await User.findByPk(id);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    await user.destroy();
+    return { message: 'User deleted successfully' };
+  } catch (error) {
+    logger.error(`Error deleting user with id ${id}:`, error);
+    throw error;
   }
-  return await user.destroy();
 };
 
 module.exports = { getAllUsers, createUser, getUserById, updateUser, deleteUser };

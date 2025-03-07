@@ -20,7 +20,7 @@ const authService = {
       const token = generateToken(user);
 
       // Remove password from response
-      const userWithoutPassword = user.toJSON();
+      const { password: _, ...userWithoutPassword } = user.toJSON();
       return {
         user: userWithoutPassword,
         token,
@@ -49,8 +49,8 @@ const authService = {
       // Generate JWT token
       const token = generateToken(user);
 
-      // Remove password from response using destructuring
-      const userWithoutPassword = user.toJSON();
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user.toJSON();
       return {
         user: userWithoutPassword,
         token,
@@ -67,7 +67,9 @@ const authService = {
       if (!user) {
         throw new Error('User not found');
       }
-      return user.toJSON();
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user.toJSON();
+      return userWithoutPassword;
     } catch (error) {
       logger.error('Error validating user:', error);
       throw error;

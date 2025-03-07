@@ -5,6 +5,7 @@ const logger = require('../../../utils/logger');
 
 jest.mock('../../../utils/jwt');
 jest.mock('../../../services/authService');
+jest.mock('../../../utils/logger');
 
 describe('Auth Middleware', () => {
   let mockReq;
@@ -26,18 +27,28 @@ describe('Auth Middleware', () => {
 
   it('should pass if valid token is provided', async () => {
     const mockToken = 'Bearer valid.jwt.token';
-    const mockDecodedToken = { id: 1, username: 'testuser' };
-    const mockUser = { id: 1, username: 'testuser' };
+    const mockUser = {
+      id: 1,
+      username: 'testuser',
+      email: 'test@example.com',
+      password: 'hashedpassword',
+      membership_id: 'M123',
+    };
 
     mockReq.headers.authorization = mockToken;
-    verifyToken.mockReturnValue(mockDecodedToken);
+    verifyToken.mockReturnValue({ id: 1, username: 'testuser' });
     authService.validateUser.mockResolvedValue(mockUser);
 
     await authMiddleware(mockReq, mockRes, mockNext);
 
     expect(verifyToken).toHaveBeenCalledWith('valid.jwt.token');
     expect(authService.validateUser).toHaveBeenCalledWith(1);
-    expect(mockReq.user).toBe(mockUser);
+    expect(mockReq.user).toEqual({
+      id: 1,
+      username: 'testuser',
+      email: 'test@example.com',
+      membership_id: 'M123',
+    });
     expect(mockNext).toHaveBeenCalled();
     expect(logger.error).not.toHaveBeenCalled();
   });
@@ -84,10 +95,26 @@ describe('Auth Middleware', () => {
 
   it('should return 401 if user not found', async () => {
     const mockToken = 'Bearer valid.jwt.token';
-    const mockDecodedToken = { id: 1 };
 
     mockReq.headers.authorization = mockToken;
-    verifyToken.mockReturnValue(mockDecodedToken);
+    verifyToken.mockReturnValue({ id: 1 });
+    authService.validateUser.mockResolvedValue(null);
+
+    await authMiddleware(mockReq, mockRes, mockNext);
+
+    expect(mockRes.status).toHaveBeenCalledWith(401);
+    expect(mockRes.json).toHaveBeenCalledWith({
+      message: 'User no longer exists',
+    });
+    expect(mockNext).not.toHaveBeenCalled();
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('should return 401 if user validation fails', async () => {
+    const mockToken = 'Bearer valid.jwt.token';
+
+    mockReq.headers.authorization = mockToken;
+    verifyToken.mockReturnValue({ id: 1 });
     authService.validateUser.mockRejectedValue(new Error('User not found'));
 
     await authMiddleware(mockReq, mockRes, mockNext);
@@ -102,11 +129,11 @@ describe('Auth Middleware', () => {
 
   it('should return 500 for unexpected errors', async () => {
     const mockToken = 'Bearer valid.jwt.token';
-    const mockDecodedToken = { id: 1 };
 
     mockReq.headers.authorization = mockToken;
-    verifyToken.mockReturnValue(mockDecodedToken);
-    authService.validateUser.mockRejectedValue(new Error('Database error'));
+    verifyToken.mockImplementation(() => {
+      throw new Error('Database error');
+    });
 
     await authMiddleware(mockReq, mockRes, mockNext);
 

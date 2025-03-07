@@ -50,9 +50,8 @@ class AuthController {
 
   async getProfile(req, res) {
     try {
-      // eslint-disable-next-line no-unused-vars
-      const { password, ...userWithoutPassword } = req.user.toJSON();
-      res.status(200).json(userWithoutPassword);
+      // Since validateUser already returns user without password
+      res.status(200).json(req.user);
     } catch (error) {
       logger.error('Error in getProfile controller:', error);
       res.status(500).json({ message: 'Error fetching profile', error: error.message });
