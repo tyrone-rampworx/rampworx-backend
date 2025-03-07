@@ -1,17 +1,46 @@
 // services/userService.js
-const userModel = require('../models/userModel');
+const User = require('../models/User');
+const Address = require('../models/Address');
 
 const getAllUsers = async () => {
-  return await userModel.getAllUsers();
+  return await User.findAll({
+    include: [Address],
+  });
 };
 
-const createUser = async (username, email, password, membershipId) => {
-  // Add business logic here, such as validation
-  if (!username || !email || !password || !membershipId) {
+const createUser = async (username, email, password, membership_id) => {
+  if (!username || !email || !password || !membership_id) {
     throw new Error('Missing required fields');
   }
 
-  return await userModel.createUser(username, email, password, membershipId);
+  return await User.create({
+    username,
+    email,
+    password,
+    membership_id,
+  });
 };
 
-module.exports = { getAllUsers, createUser };
+const getUserById = async (id) => {
+  return await User.findByPk(id, {
+    include: [Address],
+  });
+};
+
+const updateUser = async (id, userData) => {
+  const user = await User.findByPk(id);
+  if (!user) {
+    throw new Error('User not found');
+  }
+  return await user.update(userData);
+};
+
+const deleteUser = async (id) => {
+  const user = await User.findByPk(id);
+  if (!user) {
+    throw new Error('User not found');
+  }
+  return await user.destroy();
+};
+
+module.exports = { getAllUsers, createUser, getUserById, updateUser, deleteUser };
